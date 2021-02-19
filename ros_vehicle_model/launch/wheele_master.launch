@@ -1,12 +1,46 @@
-<launch>
-  <node pkg="tf" type="static_transform_publisher" name="base_frame_laser" args="0 0 0 0.0 0 0 /base_link /laser 10" />
+﻿<launch>
+  <!-- Run the map server -->
+<!-- Remove the fixed map
+  <arg name="map_file" default="/home/circ/Downloads/ros_playback_helpers/big_run_map1u_clean_append6.yaml"/>
+  <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" />
+-->
 
-  <param name="max_stream_flag" value = "false" type = "bool" />
-  <param name="rate_hz" value="10" type="int" />
-  <node pkg="leddar_can" type = "leddar_stream" name = "leddar_scan" />
+  <!-- <node pkg="tf" type="static_transform_publisher" name="base_frame_laser" args="0 0 0 0.0 0 0 /base_link /laser 10" /> -->
+
+  <node pkg="leddar_can" type = "leddar_stream" name = "leddar_scan" output="screen">
+    <param name="max_stream_flag" value = "false" type = "bool" />
+    <param name="rate_hz" value="10" type="int" />
+    <param name="min_amp_slope" value="1.5" />
+    <param name="min_amp_offset" value="15.0" />
+  </node>
   
   <node pkg="socketcan_bridge" type = "socketcan_bridge_node" name = "can_bridge" />
-  <node pkg="can2ros_wheele" type = "can2ros.py" name = "can2odom" />
-  <node pkg="ros_vehicle_model" type = "vehicle_model" name = "veh_model" />
-  <node pkg="ros_micromaestro" type = "micromaestro" name = "micro_maestro" />
+  <node pkg="can2ros_wheele" type = "can2ros.py" name = "can2odom" output="screen" />
+  <node pkg="ros_vehicle_model" type="ros2can" name="ros2can" output="screen" />
+  <!-- <node pkg="ros_vehicle_model" type = "vehicle_model" name = "veh_model" /> -->
+  <!-- <node pkg="ros_micromaestro" type = "micromaestro" name = "micro_maestro" /> -->
+
+  <node pkg="imu_can" type = "imu_stream" name = "imu_stream" />
+  <node name="nmea_serial_driver" pkg="nmea_navsat_driver" type="nmea_serial_driver" args="_port:=/dev/GPS_ultimate _baud:=9600 _frame_id:=gps"/>
+  <node pkg="gps_modular" type="gps_transform.py" name="gps_transform" output="screen"/>
+
+  <!-- <include file="$(find nav_sim)/launch/move_base_nav.launch" /> -->
+
+  <!-- <node pkg="ros_vehicle_model" type="conv_cmd_vel.py" name="conv_cmd_vel" /> -->
+  
+  <node pkg="ros_vehicle_model" type="wheele_local_planner.py" name="wheele_planner" >
+    <remap from="/move_base/GlobalPlanner/plan" to="path" />
+  </node>
+
+  <include file="$(find ros_vehicle_model)/launch/camera_test.launch" />
+
+  <include file="$(find avoid_obstacles)/launch/avoid_obstacles.launch" />
+
+  <node pkg="avoid_obstacles" type="waypoints_manager.py" name="waypoints_manager" output="screen"/>
+
+  <include file="$(find cone_finder)/launch/cone_finder.launch" />
+
+<!-- Remove AMCL
+  <include file="$(find circ_2dnav)/launch/circ_amcl_diff.launch" />
+-->
 </launch>
